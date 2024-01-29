@@ -1,0 +1,42 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=99
+
+parse_shell()
+{
+	local cfg="$1"
+
+	[ -n "$cfg" ] || return
+	validate_shell_section "$cfg" >/dev/null 2>&1 || return
+	[ -n "$sh" ] || return
+	[ "$st" -gt 0 -o "$et" -gt 0 ] || return
+
+	procd_open_instance "$cfg"
+	procd_set_param command "/usr/bin/loopshell"
+	[ "$st" -gt 0 ] && procd_append_param command --st $st
+	[ "$et" -gt 0 ] && procd_append_param command --et $et
+	procd_append_param command -l "$sh"
+	procd_set_param respawn
+	procd_close_instance
+}
+
+start_service()
+{
+	if [ $(/etc/init.d/loopshell enabled; printf "%u" ${?}) -eq 0 ]; then
+		config_load loopshell
+		config_foreach parse_shell "shell"
+	fi
+}
+
+service_triggers() {
+	procd_add_reload_trigger "loopshell"
+	procd_open_validate
+	validate_shell_section
+	procd_close_validate
+}
+
+validate_shell_section()
+{
+	uci_validate_section loopshell shell "$1" 'st:uinteger:0' 'et:uinteger:0' 'sh:string'
+}

@@ -1,0 +1,12 @@
+#!/bin/sh
+touch /etc/config/php-script
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@php-script[-1]
+	add ucitrack php-script
+	set ucitrack.@php-script[-1].init=php-script
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0
