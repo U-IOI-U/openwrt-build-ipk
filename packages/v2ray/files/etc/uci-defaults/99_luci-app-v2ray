@@ -1,0 +1,12 @@
+#!/bin/sh
+touch /etc/config/v2ray
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@v2ray[-1]
+	add ucitrack v2ray
+	set ucitrack.@v2ray[-1].init=v2ray
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

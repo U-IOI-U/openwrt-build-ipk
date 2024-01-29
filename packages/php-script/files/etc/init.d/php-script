@@ -1,0 +1,39 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2012 OpenWrt.org
+
+START=99
+USE_PROCD=1
+
+parse_script()
+{
+	local cfg="$1"
+
+	[ -n "$cfg" ] || return
+	validate_script_section "$cfg" >/dev/null 2>&1 || return
+	[ -n "$sh" ] || return
+
+	procd_open_instance "$cfg"
+	procd_set_param command "/usr/bin/php"
+	procd_append_param command "$sh"
+	procd_set_param respawn
+	procd_close_instance
+}
+
+start_service() {
+	if [ $(/etc/init.d/php-script enabled; printf "%u" ${?}) -eq 0 ]; then
+		config_load php-script
+		config_foreach parse_script "script"
+	fi
+}
+
+service_triggers() {
+	procd_add_reload_trigger "php-script"
+	procd_open_validate
+	validate_script_section
+	procd_close_validate
+}
+
+validate_script_section()
+{
+	uci_validate_section php-script script "$1" 'sh:string'
+}

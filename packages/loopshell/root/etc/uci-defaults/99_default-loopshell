@@ -1,0 +1,12 @@
+#!/bin/sh
+touch /etc/config/loopshell
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@loopshell[-1]
+	add ucitrack loopshell
+	set ucitrack.@loopshell[-1].init=loopshell
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

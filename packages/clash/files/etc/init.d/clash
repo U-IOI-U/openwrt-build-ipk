@@ -1,0 +1,67 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2012 OpenWrt.org
+
+START=99
+USE_PROCD=1
+
+PROG='clash'
+clash_exe='/var/clash/clash'
+
+
+service_triggers()
+{
+	procd_add_config_trigger "config.change" "${PROG}" /etc/init.d/"${PROG}" restart
+}
+
+find_clash()
+{
+	if [ ! -e '/var/clash/clash' ]; then
+		for _i in 1 2 3; do
+			for link in $(uci -q get clash.main.link); do
+				if [ -z "$link" ]; then
+					continue
+				fi
+				if [ `curl -I -sL "${link}" | head -n 1 | grep -c 200` -eq 1 ]; then
+					curl -sL "${link}" | gunzip -c | tar -xvf - -C /var/clash/
+					if [ $? -eq 0 ]; then
+						break
+					fi
+				fi
+			done
+			for _file in `find /var/clash -name 'clash-*' 2>/dev/null`; do
+				if [ "$_file" != "" ]; then
+					mv "$_file" '/var/clash/clash'
+					break
+				fi
+			done
+			if [ -e '/var/clash/clash' ]; then
+				chmod +x '/var/clash/clash'
+				clash_exe='/var/clash/clash'
+				break
+			else
+				sleep 10s
+			fi
+		done
+	fi
+}
+
+start_service() {
+	mkdir /var/log/clash > /dev/null 2>&1
+	mkdir -m0755 -p /var/clash >/dev/null 2>&1
+ 
+	for s in `find /etc/clash -type f`; do ln -sf $s /var/clash; done
+
+	find_clash
+
+	$clash_exe -t -d '/var/clash'
+	[ $? -eq 0 ] || return
+
+	procd_open_instance
+	procd_set_param respawn
+	procd_set_param command $clash_exe -d /var/clash
+	procd_set_param env 'HOME=/var/clash'
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param pidfile /var/run/clash.pid
+	procd_close_instance
+}

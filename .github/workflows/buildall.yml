@@ -1,0 +1,138 @@
+# This is a basic workflow that is manually triggered
+
+name: Build Openwrt IPK
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    inputs:
+      version:
+        description: 'Openwrt build version'
+        default: '23.05.2'
+        required: true
+        type: choice
+        options:
+          - '23.05.2'
+      package:
+        description: 'Openwrt build package'
+        default: 'all'
+        required: true
+        type: choice
+        options:
+          - 'all'
+          - 'vlmcsd'
+          - 'luci-app-vlmcsd'
+          - 'clash'
+          - 'v2ray'
+          - 'php-script'
+          - 'loopshell'
+
+env:
+  TZ: Asia/Shanghai
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "greet"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Runs a single command using the runners shell
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set Jop Summary
+      run: |
+        echo "**version**         : ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**package**         : ${{ github.event.inputs.package }}" >> $GITHUB_STEP_SUMMARY
+
+    - name: Initialization environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install -y ca-certificates apt-transport-https build-essential libncurses5-dev libncursesw5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip file python3 python3-distutils openssh-client
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
+        echo "COMPILE_STARTINGTIME=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+
+    - name: Prepare Openwrt SDK
+      run: |
+        SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+
+        echo "Download SDK [ $SDK_LINK ]"
+        wget -q --show-progress -O appbuilder.tar.xz "$SDK_LINK"
+        [ -f "appbuilder.tar.xz" ] || exit 1
+
+        echo "Uncompression SDK"
+        mkdir appbuilder && cd appbuilder
+        tar xf ../appbuilder.tar.xz --strip-components=1
+        [ $? = "0" ] || exit 1
+
+        cd package/
+        ln -sf ../../packages new
+        cd ../
+
+        ./scripts/feeds update base packages luci routing telephony
+        ./scripts/feeds install base packages luci routing telephony
+        make defconfig
+        ln -sf ../../../feeds/packages/net/curl package/feeds/packages/curl
+        cd ..
+
+        rm -f "appbuilder.tar.xz"
+
+    - name: Build Openwrt IPK
+      id: build
+      run: |
+        build_package=""
+        if [ "${{ github.event.inputs.package }}" = 'all' ]; then
+          build_package=`ls packages 2>/dev/null`
+        else
+          build_package="${{ github.event.inputs.package }}"
+        fi
+
+        cd appbuilder
+        for pkg in $build_package; do
+          if [ -d "package/new/$pkg" ]; then
+            echo "Build Package [ $pkg ]"
+            if [ "${{ github.event.inputs.package }}" = 'all' ]; then
+              make package/new/$pkg/compile -j`LANG=C cat /proc/cpuinfo | grep ^processor | wc -l` >/dev/null 2>&1
+            else
+              make package/new/$pkg/compile -j`LANG=C cat /proc/cpuinfo | grep ^processor | wc -l`
+            fi
+            for app in `find bin -name "*$pkg*" 2>/dev/null`; do
+              if [ -f "$app" ]; then
+                echo "Copy [ $app ]"
+                cp $app /workdir/
+              fi
+            done
+          fi
+        done
+
+    - name:  Upload Artifact
+      uses: actions/upload-artifact@v4.1.0
+      if: ${{ github.event.inputs.package != 'all' }}
+      with:
+        name: output
+        path: /workdir/*
+
+    - name: Upload file to Release
+      uses: ncipollo/release-action@main
+      if: ${{ github.event.inputs.package == 'all' }}
+      with:
+        tag: Openwrt_${{ github.event.inputs.version }}_${{ env.COMPILE_STARTINGTIME }}
+        makeLatest: true
+        artifacts: /workdir/*
+        allowUpdates: true
+        token: ${{ secrets.GH_TOKEN }}
+        body: |
+          This is Openwrt IPK
