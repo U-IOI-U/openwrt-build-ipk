@@ -24,7 +24,7 @@ find_v2ray()
 				if [ -z "$link" ]; then
 					continue
 				fi
-				if [ `curl -I -sL "${link}" | head -n 1 | grep -c 200` -eq 1 ]; then
+				if [ `curl -I -sL --connect-timeout 5 "${link}" | head -n 1 | grep -c 200` -eq 1 ]; then
 					curl -sL "${link}" | tar -xvf - -C /var
 					if [ $? -eq 0 ]; then
 						break

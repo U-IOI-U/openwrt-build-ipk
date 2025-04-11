@@ -21,7 +21,7 @@ find_clash()
 				if [ -z "$link" ]; then
 					continue
 				fi
-				if [ `curl -I -sL "${link}" | head -n 1 | grep -c 200` -eq 1 ]; then
+				if [ `curl -I -sL --connect-timeout 5 "${link}" | head -n 1 | grep -c 200` -eq 1 ]; then
 					curl -sL "${link}" | gunzip -c | tar -xvf - -C /var/clash/
 					if [ $? -eq 0 ]; then
 						break
