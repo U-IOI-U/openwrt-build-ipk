@@ -16,6 +16,14 @@ on:
         options:
           - '23.05.2'
           - '24.10.0'
+      arch:
+        description: 'Openwrt build arch'
+        default: 'mipsel'
+        required: true
+        type: choice
+        options:
+          - 'mipsel'
+          - 'aarch64-a53'
       package:
         description: 'Openwrt build package'
         default: 'all'
@@ -70,9 +78,17 @@ jobs:
       run: |
         SDK_LINK=""
         if [ "${{ github.event.inputs.version }}" = "23.05.2" ]; then
-          SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-        elif  [ "${{ github.event.inputs.version }}" = "24.10.0" ]; then
-          SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          if [ "${{ github.event.inputs.arch }}" = "mipsel" ]; then
+            SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          elif [ "${{ github.event.inputs.arch }}" = "aarch64-a53" ]; then
+            SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ipq807x/generic/openwrt-sdk-${{ github.event.inputs.version }}-ipq807x-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          fi
+        elif [ "${{ github.event.inputs.version }}" = "24.10.0" ]; then
+          if [ "${{ github.event.inputs.arch }}" = "mipsel" ]; then
+            SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          elif [ "${{ github.event.inputs.arch }}" = "aarch64-a53" ]; then
+            SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/qualcommax/ipq807x/openwrt-sdk-${{ github.event.inputs.version }}-qualcommax-ipq807x_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+          fi
         fi
 
         echo "Download SDK [ $SDK_LINK ]"
