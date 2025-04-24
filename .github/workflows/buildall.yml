@@ -10,12 +10,24 @@ on:
     inputs:
       version:
         description: 'Openwrt build version'
-        default: '23.05.2'
+        default: '23.05.5'
         required: true
         type: choice
         options:
-          - '23.05.2'
-          - '24.10.0'
+          - '19.07.9'
+          - '21.02.7'
+          - '23.05.5'
+          - '24.10.1'
+      arch:
+        description: 'Openwrt build arch'
+        default: 'mipsel'
+        required: true
+        type: choice
+        options:
+          - 'mipsel'
+          - 'ipq807x'
+          - 'ath79'
+          - 'ar71xx'
       package:
         description: 'Openwrt build package'
         default: 'all'
@@ -69,11 +81,42 @@ jobs:
     - name: Prepare Openwrt SDK
       run: |
         SDK_LINK=""
-        if [ "${{ github.event.inputs.version }}" = "23.05.2" ]; then
-          SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
-        elif  [ "${{ github.event.inputs.version }}" = "24.10.0" ]; then
-          SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
-        fi
+        case "${{ github.event.inputs.arch }}" in
+          "mipsel")
+            case "${{ github.event.inputs.version }}" in
+              24.10.*)
+                SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+              ;;
+              23.05.*)
+                SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ramips/mt7621/openwrt-sdk-${{ github.event.inputs.version }}-ramips-mt7621_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+              ;;
+            esac
+          ;;
+          "ipq807x")
+            case "${{ github.event.inputs.version }}" in
+              24.10.*)
+                SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/qualcommax/ipq807x/openwrt-sdk-${{ github.event.inputs.version }}-qualcommax-ipq807x_gcc-13.3.0_musl.Linux-x86_64.tar.zst"
+              ;;
+              23.05.*)
+                SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ipq807x/generic/openwrt-sdk-${{ github.event.inputs.version }}-ipq807x-generic_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+              ;;
+            esac
+          ;;
+          "ath79")
+            case "${{ github.event.inputs.version }}" in
+              21.02.*)
+                SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ath79/generic/openwrt-sdk-${{ github.event.inputs.version }}-ath79-generic_gcc-8.4.0_musl.Linux-x86_64.tar.xz"
+              ;;
+            esac
+          ;;
+          "ar71xx")
+            case "${{ github.event.inputs.version }}" in
+              19.07.*)
+                SDK_LINK="https://downloads.openwrt.org/releases/${{ github.event.inputs.version }}/targets/ar71xx/generic/openwrt-sdk-${{ github.event.inputs.version }}-ar71xx-generic_gcc-7.5.0_musl.Linux-x86_64.tar.xz"
+              ;;
+            esac
+          ;;
+        esac
 
         echo "Download SDK [ $SDK_LINK ]"
         wget -q --show-progress -O appbuilder.tar.xz "$SDK_LINK"
@@ -135,10 +178,10 @@ jobs:
       uses: ncipollo/release-action@main
       if: ${{ github.event.inputs.package == 'all' }}
       with:
-        tag: Openwrt_${{ github.event.inputs.version }}_${{ env.COMPILE_STARTINGTIME }}
-        makeLatest: true
+        tag: Openwrt_${{ github.event.inputs.version }}_${{ github.event.inputs.arch }}
+        makeLatest: false
         artifacts: /workdir/*
         allowUpdates: true
         token: ${{ secrets.GH_TOKEN }}
         body: |
-          This is Openwrt IPK
+          Openwrt IPK [ ${{ env.COMPILE_STARTINGTIME }} ]

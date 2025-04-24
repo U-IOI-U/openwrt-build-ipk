@@ -22,6 +22,7 @@ define Package/$(PKG_NAME)
 	TITLE:=Clash is A rule-based tunnel in Go
 	DEPENDS:=+ca-certificates 
 	URL:=https://github.com/Dreamacro/clash
+	PKGARCH:=all
 endef
 
 define Package/$(PKG_NAME)/config
