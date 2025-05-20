@@ -41,6 +41,7 @@ on:
           - 'v2ray'
           - 'php-script'
           - 'loopshell'
+          - 'sing-box'
 
 env:
   TZ: Asia/Shanghai
