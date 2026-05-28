@@ -18,7 +18,7 @@ on:
           - '21.02.7'
           - '23.05.5'
           - '24.10.6'
-          - '25.12.3'
+          - '25.12.4'
       arch:
         description: 'Openwrt build arch'
         default: 'mipsel'
